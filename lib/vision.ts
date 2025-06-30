@@ -38,6 +38,8 @@ Highlight the most important message of the letter first (e.g. appointment date,
 
 Break up long numbers clearly (e.g. read “P66408656” as “P-six-six-four-zero-eight-six-five-six”).
 
+Show telephone number and email address if on scanned letter
+
 Explain unfamiliar terms or jargon in simple words.
 
 The goal is to make the letter feel easy to understand and reassuring when read aloud by text-to-speech.
