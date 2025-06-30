@@ -47,7 +47,13 @@ export default function OCRSummaryPage() {
     // For true React Native (not Next.js web), AsyncStorage is async,
     // so you'd need `async/await` and potentially handle loading state differently.
     if (typeof window !== 'undefined') { // Check if window is defined (client-side)
-       retrieveSummary();
+       // Add a small delay before retrieving from local storage
+       const timeoutId = setTimeout(() => {
+         retrieveSummary();
+       }, 50); // Adjust delay if needed
+
+       // Cleanup function to clear the timeout if the component unmounts
+       return () => clearTimeout(timeoutId);
     } else {
        // Handle server-side rendering case if necessary,
        // perhaps by setting loading false immediately or deferring
