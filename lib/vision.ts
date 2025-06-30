@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 // Rename the function to reflect its new purpose, e.g., analyseLetterImage
 export async function analyseLetterImage(base64Image: string): Promise<string> {
   console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "Key is present" : "Key is missing or empty");
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }); // gemini-2.5-flash should work for text extraction
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' }); // gemini-2.5-pro should work for text extraction
 
   const result = await model.generateContent({
     contents: [
