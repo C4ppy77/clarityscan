@@ -30,6 +30,10 @@ The user has just scanned a letter — please read the content below and generat
 
 Your summary should:
 
+Do not include any trailing backslashes or code block markers. Output a plain paragraph of text, suitable for screen readers.
+
+Start the summary with a friendly greeting like 'Hello,' followed by a simple confirmation that you've processed the letter, like 'I've looked at the letter you scanned.' Then, immediately provide the most important information."
+
 Use natural, empathetic tone as if explaining to an elderly or visually impaired person.
 
 Avoid lists, bullet points, or field labels — use full, spoken sentences.

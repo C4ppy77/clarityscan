@@ -10,12 +10,16 @@ import { useState, useEffect } from "react"
 // Example: import Tts from 'react-native-tts';
 
 export default function OCRSummaryPage() {
-  const router = useRouter()
+  const router = useRouter();
   const [summaryText, setSummaryText] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isReading, setIsReading] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
+  const [isReading, setIsReading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  // State to hold the Audio object for stopping playback
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+
 
   // Effect to retrieve summary from local storage on page load
   useEffect(() => {
@@ -28,7 +32,10 @@ export default function OCRSummaryPage() {
         const storedSummary = localStorage.getItem('currentLetterSummary');
 
         if (storedSummary) {
-          setSummaryText(storedSummary);
+          // Add cleaning logic here
+          const cleanedSummary = storedSummary.trim().replace(/\\+$/, ''); // Remove trailing backslashes
+
+          setSummaryText(cleanedSummary);
           // *** Important: Delete from local storage after retrieving for privacy ***
           localStorage.removeItem('currentLetterSummary');
         } else {
@@ -74,49 +81,117 @@ export default function OCRSummaryPage() {
   }, []); // Empty dependency array means this effect runs once on mount
 
   const handleGoHome = () => {
-    router.push("/")
-  }
+    router.push("/");
+  };
 
-  const handleReadAloud = async () => { // Made async in case TTS library returns a Promise
+  const handleReadAloud = async () => {
     if (!summaryText) return; // Don't try to read if no summary is loaded
 
-    if (isReading) {
-      // Stop Text-to-Speech
-      // Use your mobile-specific TTS library's stop function
-      console.log("Stopping text-to-speech...") // Placeholder
-      // await Speech.stop(); // Example for Expo/React Native
-      // await Tts.stop(); // Example for React Native TTS
+    if (isReading && currentAudio) {
+      // Stop Text-to-Speech if currently reading
+      console.log("Stopping text-to-speech...");
+      currentAudio.pause(); // Pause the current audio playback
+      currentAudio.currentTime = 0; // Rewind to the start (optional)
+      if (currentAudio.src.startsWith('blob:')) {
+         URL.revokeObjectURL(currentAudio.src); // Clean up the Blob URL
+      }
+      setCurrentAudio(null); // Clear the audio object
+      setIsReading(false); // Update reading state
 
-    } else {
+    } else if (summaryText && !isReading) {
       // Start Text-to-Speech
-      // Use your mobile-specific TTS library's speak function
-      console.log("Starting text-to-speech...") // Placeholder
-      // Ensure your TTS library is initialized if required before speaking
-      // await Speech.speak(summaryText, { language: 'en-US' }); // Example for Expo/React Native
-      // await Tts.speak(summaryText, { language: 'en-US' }); // Example for React Native TTS
+      console.log("Starting text-to-speech via API...");
+      setIsReading(true); // Set reading state to true immediately
+
+const ttsApiUrl = "http://localhost:5001/synthesize"; // <<--- REPLACE with your actual TTS server URL
+
+      try {
+        const response = await fetch(ttsApiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: summaryText,
+            // Add optional fields if needed, e.g.:
+            // voice: "af_heart",
+            // language: "a",
+            // speed: 1.0,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        // The response body is the WAV audio data
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        // Create and play the audio
+        const audio = new Audio(audioUrl);
+
+        // Set up event listeners
+        audio.onended = () => {
+          console.log("Audio playback ended.");
+          setIsReading(false); // Set reading state to false when playback finishes
+          URL.revokeObjectURL(audioUrl); // Clean up the Blob URL
+          setCurrentAudio(null);
+        };
+
+        audio.onerror = (e) => {
+          console.error("Audio playback error:", e);
+          setError("Failed to play audio."); // Display an error to the user
+          setIsReading(false); // Set reading state to false on error
+          URL.revokeObjectURL(audioUrl); // Clean up the Blob URL
+          setCurrentAudio(null);
+        };
+
+        setCurrentAudio(audio); // Store the audio object to potentially stop it later
+        audio.play(); // Start playback
+
+      } catch (e: any) {
+        console.error("Error fetching or playing audio:", e);
+        setError(`Failed to generate or play speech: ${e.message}`);
+        setIsReading(false); // Set reading state to false on error
+        setCurrentAudio(null);
+      }
     }
-    setIsReading(!isReading);
-  }
+  };
 
   const handleSave = () => {
-    setIsSaved(true)
+    setIsSaved(true);
     // Placeholder for save functionality - Consider saving to a secure, non-cloud local history if required
     // Note: Saving the *full* text might conflict with initial privacy goals of temporary storage.
     // Maybe save metadata or a very brief, non-sensitive identifier? The summary text is already deleted on load.
-    console.log("Saving summary to history (placeholder)...")
+    console.log("Saving summary to history (placeholder)...");
 
     // Reset saved state after 2 seconds for demo
     setTimeout(() => {
-      setIsSaved(false)
-    }, 2000)
-  }
+      setIsSaved(false);
+    }, 2000);
+  };
 
   const handleDelete = () => {
     // The summary is already deleted from local storage on load.
     // This button can just navigate back or confirm deletion status.
-    console.log("Deleting scan (already removed from local storage on load)")
-    router.push("/")
-  }
+    console.log("Deleting scan (already removed from local storage on load)");
+    router.push("/");
+  };
+
+  // Effect to clean up audio on component unmount
+  useEffect(() => {
+    return () => {
+      if (currentAudio) {
+        currentAudio.pause();
+        if (currentAudio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(currentAudio.src);
+        }
+      }
+    };
+  }, [currentAudio]);
+
 
   return (
     <div className="min-h-screen bg-black flex flex-col text-white">
